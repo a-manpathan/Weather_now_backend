@@ -74,7 +74,7 @@ def get_weather():
         "current": "temperature_2m,relative_humidity_2m,weathercode,windspeed_10m",
         "daily": "temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max",
         "forecast_days": 7,
-        "past_days": 7,   # <-- keep last 7 days like original code
+        "past_days": 7,
         "timezone": "auto"
     }
 
@@ -99,18 +99,17 @@ def get_weather():
 
     # Past 7 days
     past_weather = []
-    if "daily" in weather_response and "time" in weather_response["daily"]:
-        daily_data = weather_response["daily"]
-        for i in range(len(daily_data["time"])):
-            code = daily_data["weathercode"][i]
-            day_data = {
-                "date": daily_data["time"][i],
-                "max_temp_c": daily_data["temperature_2m_max"][i],
-                "min_temp_c": daily_data["temperature_2m_min"][i],
-                "max_windspeed_kmh": daily_data["windspeed_10m_max"][i],
-                "condition": WEATHER_CODES.get(code, "Unknown")
-            }
-            past_weather.append(day_data)
+    daily_data = weather_response["daily"]
+    for i in range(len(daily_data["time"])):
+        code = daily_data["weathercode"][i]
+        day_data = {
+            "date": daily_data["time"][i],
+            "max_temp_c": daily_data["temperature_2m_max"][i],
+            "min_temp_c": daily_data["temperature_2m_min"][i],
+            "max_windspeed_kmh": daily_data["windspeed_10m_max"][i],
+            "weathercode": code
+        }
+        past_weather.append(day_data)
 
     # Only keep last 7 days separate from forecast
     past_weather = past_weather[:7]  # first 7 entries = past days
