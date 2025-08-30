@@ -47,6 +47,31 @@ def suggest_activity(weathercode):
     else:
         return "Check conditions carefully before going out."
 
+@app.route("/suggestions", methods=["GET"])
+def get_suggestions():
+    query = request.args.get("q")
+    if not query or len(query) < 2:
+        return jsonify({"suggestions": []})
+
+    geo_params = {"name": query, "count": 5}
+    try:
+        geo_response = requests.get(GEOCODING_URL, params=geo_params).json()
+    except requests.exceptions.RequestException:
+        return jsonify({"suggestions": []})
+
+    suggestions = []
+    if "results" in geo_response:
+        for result in geo_response["results"][:5]:
+            city_info = {
+                "name": result["name"],
+                "country": result.get("country", ""),
+                "admin1": result.get("admin1", ""),
+                "display": f"{result['name']}, {result.get('admin1', '')}, {result.get('country', '')}".replace(", , ", ", ").rstrip(", ")
+            }
+            suggestions.append(city_info)
+    
+    return jsonify({"suggestions": suggestions})
+
 @app.route("/weather", methods=["GET"])
 def get_weather():
     city = request.args.get("city")
@@ -74,7 +99,7 @@ def get_weather():
         "current": "temperature_2m,relative_humidity_2m,weathercode,windspeed_10m",
         "daily": "temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max",
         "forecast_days": 7,
-        "past_days": 7,   # <-- keep last 7 days like original code
+        "past_days": 7,
         "timezone": "auto"
     }
 
@@ -99,18 +124,17 @@ def get_weather():
 
     # Past 7 days
     past_weather = []
-    if "daily" in weather_response and "time" in weather_response["daily"]:
-        daily_data = weather_response["daily"]
-        for i in range(len(daily_data["time"])):
-            code = daily_data["weathercode"][i]
-            day_data = {
-                "date": daily_data["time"][i],
-                "max_temp_c": daily_data["temperature_2m_max"][i],
-                "min_temp_c": daily_data["temperature_2m_min"][i],
-                "max_windspeed_kmh": daily_data["windspeed_10m_max"][i],
-                "condition": WEATHER_CODES.get(code, "Unknown")
-            }
-            past_weather.append(day_data)
+    daily_data = weather_response["daily"]
+    for i in range(len(daily_data["time"])):
+        code = daily_data["weathercode"][i]
+        day_data = {
+            "date": daily_data["time"][i],
+            "max_temp_c": daily_data["temperature_2m_max"][i],
+            "min_temp_c": daily_data["temperature_2m_min"][i],
+            "max_windspeed_kmh": daily_data["windspeed_10m_max"][i],
+            "weathercode": code
+        }
+        past_weather.append(day_data)
 
     # Only keep last 7 days separate from forecast
     past_weather = past_weather[:7]  # first 7 entries = past days
